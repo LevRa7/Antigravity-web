@@ -1,52 +1,57 @@
-// Clean model injection: ONLY inject inside the open popover menu, NEVER on the prompt bar button
-(function fixModelPickerInjection() {
+// Robust model injection into React Dialog Menu
+(function injectModelsToDialogMenu() {
   function applyInjection() {
     try {
-      // Remove any erroneous cloned buttons from the main prompt bar
-      var promptBarButtons = document.querySelectorAll("button.g37-injected, button.openai-free-injected");
+      // Remove accidental duplicate buttons on main prompt bar
+      var promptBarButtons = document.querySelectorAll("button.injected-model-row, button.g37-injected, button.openai-free-injected");
       promptBarButtons.forEach(function(b) { b.remove(); });
 
-      // Find active popover portal containers ONLY
-      var popovers = document.querySelectorAll("[data-radix-popper-content-wrapper], [role=listbox], [role=menu], [aria-label*=menu]");
-      popovers.forEach(function(popover) {
-        var targetSpans = Array.from(popover.querySelectorAll("span")).filter(function(s) {
-          return s.innerText && (s.innerText.trim() === "Gemini 3.6 Flash (High)" || s.innerText.trim() === "Gemini 3.5 Flash (High)");
+      var dialogs = document.querySelectorAll("div[role='dialog']");
+      dialogs.forEach(function(dialog) {
+        if (!dialog.innerText || !dialog.innerText.includes("Model")) return;
+        if (dialog.querySelector(".injected-model-row")) return;
+
+        var allElements = Array.from(dialog.querySelectorAll("div, span, button"));
+        var targetEl = allElements.find(function(el) {
+          return el.innerText && el.innerText.trim().startsWith("Gemini 3.6 Flash (High)");
         });
+        if (!targetEl) return;
 
-        targetSpans.forEach(function(span) {
-          var row = span;
-          while (row && row.parentElement && row.parentElement !== popover && !row.className.includes("cursor-pointer") && row.getAttribute("role") !== "option") {
-            row = row.parentElement;
-          }
-          var container = row ? row.parentElement : null;
-          if (container && !container.querySelector(".model-injected-item")) {
-            var extraModels = [
-              { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash (High)" },
-              { id: "gemini-3.7-flash-medium", name: "Gemini 3.7 Flash (Medium)" },
-              { id: "gemini-3.7-flash-low", name: "Gemini 3.7 Flash (Low)" },
-              { id: "big-pickle", name: "Big Pickle (OpenAI Free)" },
-              { id: "deepseek-v4-flash-free", name: "DeepSeek v4 Flash (OpenAI Free)" }
-            ];
+        var row = targetEl;
+        while (row && row.parentElement && row.parentElement !== dialog && !row.className.includes("cursor-pointer") && row.tagName !== "BUTTON") {
+          row = row.parentElement;
+        }
+        var container = row ? row.parentElement : null;
+        if (!container) return;
 
-            extraModels.forEach(function(m) {
-              var clone = row.cloneNode(true);
-              clone.classList.add("model-injected-item");
-              clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.[56] Flash \(High\)/g, m.name);
-              clone.addEventListener("click", function(e) {
-                e.stopPropagation();
-                var modelBtnSpan = document.querySelector("button span.text-ellipsis");
-                if (modelBtnSpan) modelBtnSpan.innerText = m.name;
-                window.__activeModelOverride = m.id;
-              }, true);
-              container.insertBefore(clone, row);
-            });
-          }
+        var extraModels = [
+          { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash (High)" },
+          { id: "gemini-3.7-flash-medium", name: "Gemini 3.7 Flash (Medium)" },
+          { id: "gemini-3.7-flash-low", name: "Gemini 3.7 Flash (Low)" },
+          { id: "big-pickle", name: "Big Pickle (OpenAI Free)" },
+          { id: "deepseek-v4-flash-free", name: "DeepSeek v4 Flash (OpenAI Free)" }
+        ];
+
+        extraModels.forEach(function(m) {
+          var clone = row.cloneNode(true);
+          clone.classList.add("injected-model-row");
+          clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.6 Flash \(High\)/g, m.name);
+          clone.addEventListener("click", function(e) {
+            e.stopPropagation();
+            var btnSpan = document.querySelector("button span.text-ellipsis");
+            if (btnSpan) btnSpan.innerText = m.name;
+            window.__activeModelOverride = m.id;
+            dialog.style.display = "none";
+          }, true);
+          container.insertBefore(clone, row);
         });
       });
     } catch(e) {}
   }
-  setInterval(applyInjection, 400);
+  setInterval(applyInjection, 300);
 })();
+
+// Clean model injection: ONLY inject inside the open popover menu, NEVER on the prompt bar button
 
 
 // Inject OpenAI Free models (big-pickle and deepseek-v4-flash-free from opencode.ai/zen/v1)
