@@ -1,112 +1,60 @@
-
-// Inject OpenAI Free models (big-pickle and deepseek-v4-flash-free from opencode.ai/zen/v1)
-(function injectOpenAIFreeModels() {
-  const openAIModels = [
-    { value: 'big-pickle', label: 'Big Pickle (OpenAI Free)' },
-    { value: 'deepseek-v4-flash-free', label: 'DeepSeek v4 Flash (OpenAI Free)' }
-  ];
-
-  function inject() {
+// Clean model injection: ONLY inject inside the open popover menu, NEVER on the prompt bar button
+(function fixModelPickerInjection() {
+  function applyInjection() {
     try {
-      var targetSpans = Array.from(document.querySelectorAll("span")).filter(function(s) {
-        return s.innerText && (s.innerText.trim() === "Gemini 3.6 Flash (High)" || s.innerText.trim() === "Gemini 3.7 Flash (High)");
-      });
+      // Remove any erroneous cloned buttons from the main prompt bar
+      var promptBarButtons = document.querySelectorAll("button.g37-injected, button.openai-free-injected");
+      promptBarButtons.forEach(function(b) { b.remove(); });
 
-      targetSpans.forEach(function(span) {
-        var row = span;
-        while (row && row.parentElement && row.tagName !== "BUTTON" && row.getAttribute("role") !== "option" && !row.className.includes("cursor-pointer")) {
-          row = row.parentElement;
-        }
-        var container = row ? row.parentElement : null;
-        if (container && !container.querySelector(".openai-free-injected")) {
-          openAIModels.forEach(function(m) {
-            var clone = row.cloneNode(true);
-            clone.classList.add("openai-free-injected");
-            clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.[67] Flash \(High\)/g, m.label);
-            clone.addEventListener("click", function(e) {
-              e.stopPropagation();
-              var modelBtnSpan = document.querySelector("button span.text-ellipsis");
-              if (modelBtnSpan) modelBtnSpan.innerText = m.label;
-              window.__activeModelOverride = m.value;
-              console.log("Selected OpenAI Free Model:", m.value);
-            }, true);
-            container.insertBefore(clone, row);
-          });
-        }
+      // Find active popover portal containers ONLY
+      var popovers = document.querySelectorAll("[data-radix-popper-content-wrapper], [role=listbox], [role=menu], [aria-label*=menu]");
+      popovers.forEach(function(popover) {
+        var targetSpans = Array.from(popover.querySelectorAll("span")).filter(function(s) {
+          return s.innerText && (s.innerText.trim() === "Gemini 3.6 Flash (High)" || s.innerText.trim() === "Gemini 3.5 Flash (High)");
+        });
+
+        targetSpans.forEach(function(span) {
+          var row = span;
+          while (row && row.parentElement && row.parentElement !== popover && !row.className.includes("cursor-pointer") && row.getAttribute("role") !== "option") {
+            row = row.parentElement;
+          }
+          var container = row ? row.parentElement : null;
+          if (container && !container.querySelector(".model-injected-item")) {
+            var extraModels = [
+              { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash (High)" },
+              { id: "gemini-3.7-flash-medium", name: "Gemini 3.7 Flash (Medium)" },
+              { id: "gemini-3.7-flash-low", name: "Gemini 3.7 Flash (Low)" },
+              { id: "big-pickle", name: "Big Pickle (OpenAI Free)" },
+              { id: "deepseek-v4-flash-free", name: "DeepSeek v4 Flash (OpenAI Free)" }
+            ];
+
+            extraModels.forEach(function(m) {
+              var clone = row.cloneNode(true);
+              clone.classList.add("model-injected-item");
+              clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.[56] Flash \(High\)/g, m.name);
+              clone.addEventListener("click", function(e) {
+                e.stopPropagation();
+                var modelBtnSpan = document.querySelector("button span.text-ellipsis");
+                if (modelBtnSpan) modelBtnSpan.innerText = m.name;
+                window.__activeModelOverride = m.id;
+              }, true);
+              container.insertBefore(clone, row);
+            });
+          }
+        });
       });
     } catch(e) {}
   }
-  setInterval(inject, 500);
+  setInterval(applyInjection, 400);
 })();
+
+
+// Inject OpenAI Free models (big-pickle and deepseek-v4-flash-free from opencode.ai/zen/v1)
 
 
 // Dynamically inject Gemini 3.7 Flash models into the React Popover model selector
-(function injectGemini37ToUI() {
-  function applyInjection() {
-    try {
-      var targetSpans = Array.from(document.querySelectorAll("span")).filter(function(s) {
-        return s.innerText && s.innerText.trim() === "Gemini 3.6 Flash (High)";
-      });
-
-      targetSpans.forEach(function(span) {
-        var row = span;
-        while (row && row.parentElement && row.tagName !== "BUTTON" && row.getAttribute("role") !== "option" && !row.className.includes("cursor-pointer")) {
-          row = row.parentElement;
-        }
-        var container = row ? row.parentElement : null;
-        if (container && !container.querySelector(".g37-injected")) {
-          var newModels = [
-            { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash (High)" },
-            { id: "gemini-3.7-flash-medium", name: "Gemini 3.7 Flash (Medium)" },
-            { id: "gemini-3.7-flash-low", name: "Gemini 3.7 Flash (Low)" }
-          ];
-
-          newModels.forEach(function(m) {
-            var clone = row.cloneNode(true);
-            clone.classList.add("g37-injected");
-            clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.6 Flash \(High\)/g, m.name);
-            clone.addEventListener("click", function(e) {
-              e.stopPropagation();
-              var modelBtnSpan = document.querySelector("button span.text-ellipsis");
-              if (modelBtnSpan) modelBtnSpan.innerText = m.name;
-              window.__activeModelOverride = m.id;
-            }, true);
-            container.insertBefore(clone, row);
-          });
-        }
-      });
-    } catch(e) {}
-  }
-  setInterval(applyInjection, 500);
-})();
 
 // Force inject Gemini 3.7 models if not present in dropdown
-(function injectGemini37Models() {
-  const models = [
-    { value: 'gemini-3.7-flash-high', label: 'Gemini 3.7 Flash (High)' },
-    { value: 'gemini-3.7-flash-medium', label: 'Gemini 3.7 Flash (Medium)' },
-    { value: 'gemini-3.7-flash-low', label: 'Gemini 3.7 Flash (Low)' }
-  ];
-
-  function checkAndInject() {
-    var selectors = document.querySelectorAll("select, [role='listbox'], [data-radix-popper-content-wrapper]");
-    selectors.forEach(function(el) {
-      if (el.innerHTML.includes("Gemini") && !el.innerHTML.includes("Gemini 3.7 Flash (High)")) {
-        if (el.tagName === "SELECT") {
-          models.forEach(function(m) {
-            if (!el.querySelector('option[value="' + m.value + '"]')) {
-              var opt = document.createElement("option");
-              opt.value = m.value;
-              opt.innerText = m.label;
-              el.appendChild(opt);
-            }
-          });
-        }
-      }
-    });
-  }
-  setInterval(checkAndInject, 1500);
-})();
 
 
 // Auto-Redirect to /login on Authentication Error / Unauthenticated State
