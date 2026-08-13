@@ -1,50 +1,22 @@
-// Global model override state and request interceptor
-window.__activeModelOverride = window.__activeModelOverride || null;
-
-(function interceptModelRequests() {
-  // 1. Intercept fetch
-  var origFetch = window.fetch;
-  window.fetch = function(resource, init) {
-    if (window.__activeModelOverride && init && init.body && typeof init.body === 'string') {
-      try {
-        if (init.body.indexOf('gemini-3.6-flash') !== -1) {
-          init.body = init.body.replace(/gemini-3\.6-flash(-[a-z]+)?/g, window.__activeModelOverride);
-        }
-      } catch(e) {}
-    }
-    return origFetch.apply(this, arguments);
-  };
-
-  // 2. Intercept XMLHttpRequest
-  var origSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function(body) {
-    if (window.__activeModelOverride && body && typeof body === 'string') {
-      try {
-        if (body.indexOf('gemini-3.6-flash') !== -1) {
-          body = body.replace(/gemini-3\.6-flash(-[a-z]+)?/g, window.__activeModelOverride);
-        }
-      } catch(e) {}
-    }
-    return origSend.call(this, body);
-  };
-})();
-
-// Inject models into React Dialog Menu with full visibility and scrolling
+// Robust single-pass model menu injection (strictly 1 unified list)
 (function injectModelsToDialogMenu() {
   function applyInjection() {
     try {
-      var promptBarButtons = document.querySelectorAll("button.injected-model-row, button.g37-injected, button.openai-free-injected");
-      promptBarButtons.forEach(function(b) { b.remove(); });
+      // Remove any erroneous prompt bar or orphaned items
+      var orphanRows = document.querySelectorAll("button.injected-model-row");
+      orphanRows.forEach(function(b) { b.remove(); });
 
-      var dialogs = document.querySelectorAll("div[role='dialog']");
+      var dialogs = document.querySelectorAll("div[role=dialog]");
       dialogs.forEach(function(dialog) {
         if (!dialog.innerText || !dialog.innerText.includes("Model")) return;
+        // Strictly prevent multiple injections into the same dialog
+        if (dialog.getAttribute("data-g37-injected") === "true") return;
 
+        // Make dialog scrollable nicely
         dialog.style.maxHeight = "80vh";
         dialog.style.overflowY = "auto";
 
-        if (dialog.querySelector(".injected-model-row")) return;
-
+        // Find target row with Gemini 3.6 Flash (High) or Gemini 3.5 Flash (High)
         var allElements = Array.from(dialog.querySelectorAll("div, span, button"));
         var targetEl = allElements.find(function(el) {
           return el.innerText && el.innerText.trim().startsWith("Gemini 3.6 Flash (High)");
@@ -58,6 +30,13 @@ window.__activeModelOverride = window.__activeModelOverride || null;
         var container = row ? row.parentElement : null;
         if (!container) return;
 
+        // Mark dialog as processed immediately to prevent duplicate loops
+        dialog.setAttribute("data-g37-injected", "true");
+
+        // Clean up any previously injected rows inside this container
+        var existing = container.querySelectorAll(".injected-model-row");
+        existing.forEach(function(el) { el.remove(); });
+
         var extraModels = [
           { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash (High)" },
           { id: "gemini-3.7-flash-medium", name: "Gemini 3.7 Flash (Medium)" },
@@ -66,7 +45,8 @@ window.__activeModelOverride = window.__activeModelOverride || null;
           { id: "big-pickle", name: "Big Pickle (OpenAI Free)" }
         ];
 
-        extraModels.forEach(function(m) {
+        // Insert in reverse so insertBefore keeps natural order above Gemini 3.6 Flash (High)
+        extraModels.slice().reverse().forEach(function(m) {
           var clone = row.cloneNode(true);
           clone.classList.add("injected-model-row");
           clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.6 Flash \(High\)/g, m.name);
@@ -75,7 +55,7 @@ window.__activeModelOverride = window.__activeModelOverride || null;
             var btnSpan = document.querySelector("button span.text-ellipsis");
             if (btnSpan) btnSpan.innerText = m.name;
             window.__activeModelOverride = m.id;
-            console.log("Selected model override set to:", m.id);
+            console.log("Selected model override:", m.id);
             dialog.style.display = "none";
           }, true);
           container.insertBefore(clone, row);
@@ -85,6 +65,12 @@ window.__activeModelOverride = window.__activeModelOverride || null;
   }
   setInterval(applyInjection, 300);
 })();
+
+// Global model override state and request interceptor
+window.__activeModelOverride = window.__activeModelOverride || null;
+
+
+// Inject models into React Dialog Menu with full visibility and scrolling
 
 
 // Global model override state and request interceptor
