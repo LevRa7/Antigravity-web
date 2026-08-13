@@ -1,0 +1,26 @@
+[Unit]
+Description=Antigravity Language Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/me/MyProjects
+ExecStart=/home/me/Antigravity/resources/bin/language_server \
+  --standalone \
+  --override_ide_name antigravity \
+  --subclient_type hub \
+  --override_ide_version 2.6.0 \
+  --override_user_agent_name antigravity \
+  --https_server_port 9000 \
+  --http_server_port 8085 \
+  --csrf_token ST720p \
+  --app_data_dir antigravity \
+  --api_server_url https://generativelanguage.googleapis.com \
+  --cloud_code_endpoint https://cloudcode-pa.googleapis.com \
+  --enable_sidecars
+Restart=always
+RestartSec=3
+Environment=HOME=/home/me
+
+[Install]
+WantedBy=default.target

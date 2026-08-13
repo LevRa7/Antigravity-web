@@ -1,0 +1,14 @@
+[Unit]
+Description=Antigravity Multi-Account Auth API Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/me/MyProjects/antigravity-telegram-suite
+ExecStart=/usr/bin/node /home/me/MyProjects/antigravity-telegram-suite/scripts/auth_server.js
+Restart=always
+RestartSec=3
+Environment=HOME=/home/me
+
+[Install]
+WantedBy=default.target

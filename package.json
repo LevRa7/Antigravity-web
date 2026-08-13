@@ -1,0 +1,23 @@
+{
+  "name": "antigravity-web",
+  "version": "2.6.0",
+  "description": "Standalone Web Interface & Multi-Account Management Suite for Google Antigravity Language Server",
+  "main": "scripts/auth_server.js",
+  "scripts": {
+    "start": "node scripts/auth_server.js",
+    "restart": "bash scripts/restart_services.sh",
+    "setup": "bash scripts/setup.sh"
+  },
+  "keywords": [
+    "antigravity",
+    "web-ide",
+    "multi-account",
+    "language-server",
+    "google-ai"
+  ],
+  "author": "LevRa7",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
