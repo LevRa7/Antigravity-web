@@ -1,14 +1,50 @@
-// Robust model injection into React Dialog Menu
+
+// Global model override state and request interceptor
+window.__activeModelOverride = window.__activeModelOverride || null;
+
+(function interceptModelRequests() {
+  // 1. Intercept fetch
+  var origFetch = window.fetch;
+  window.fetch = function(resource, init) {
+    if (window.__activeModelOverride && init && init.body && typeof init.body === string) {
+      try {
+        if (init.body.includes(gemini-3.6-flash)) {
+          init.body = init.body.replace(/gemini-3\.6-flash(-[a-z]+)?/g, window.__activeModelOverride);
+        }
+      } catch(e) {}
+    }
+    return origFetch.apply(this, arguments);
+  };
+
+  // 2. Intercept XMLHttpRequest
+  var origSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function(body) {
+    if (window.__activeModelOverride && body && typeof body === string) {
+      try {
+        if (body.includes(gemini-3.6-flash)) {
+          body = body.replace(/gemini-3\.6-flash(-[a-z]+)?/g, window.__activeModelOverride);
+        }
+      } catch(e) {}
+    }
+    return origSend.call(this, body);
+  };
+})();
+
+// Inject models into React Dialog Menu with full visibility and scrolling
 (function injectModelsToDialogMenu() {
   function applyInjection() {
     try {
-      // Remove accidental duplicate buttons on main prompt bar
       var promptBarButtons = document.querySelectorAll("button.injected-model-row, button.g37-injected, button.openai-free-injected");
       promptBarButtons.forEach(function(b) { b.remove(); });
 
-      var dialogs = document.querySelectorAll("div[role='dialog']");
+      var dialogs = document.querySelectorAll("div[role=dialog]");
       dialogs.forEach(function(dialog) {
         if (!dialog.innerText || !dialog.innerText.includes("Model")) return;
+
+        // Ensure dialog is scrollable so all models are visible
+        dialog.style.maxHeight = "80vh";
+        dialog.style.overflowY = "auto";
+
         if (dialog.querySelector(".injected-model-row")) return;
 
         var allElements = Array.from(dialog.querySelectorAll("div, span, button"));
@@ -28,8 +64,8 @@
           { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash (High)" },
           { id: "gemini-3.7-flash-medium", name: "Gemini 3.7 Flash (Medium)" },
           { id: "gemini-3.7-flash-low", name: "Gemini 3.7 Flash (Low)" },
-          { id: "big-pickle", name: "Big Pickle (OpenAI Free)" },
-          { id: "deepseek-v4-flash-free", name: "DeepSeek v4 Flash (OpenAI Free)" }
+          { id: "deepseek-v4-flash-free", name: "DeepSeek v4 Flash (OpenAI Free)" },
+          { id: "big-pickle", name: "Big Pickle (OpenAI Free)" }
         ];
 
         extraModels.forEach(function(m) {
@@ -41,6 +77,7 @@
             var btnSpan = document.querySelector("button span.text-ellipsis");
             if (btnSpan) btnSpan.innerText = m.name;
             window.__activeModelOverride = m.id;
+            console.log("Selected model override set to:", m.id);
             dialog.style.display = "none";
           }, true);
           container.insertBefore(clone, row);
@@ -50,6 +87,8 @@
   }
   setInterval(applyInjection, 300);
 })();
+
+// Robust model injection into React Dialog Menu
 
 // Clean model injection: ONLY inject inside the open popover menu, NEVER on the prompt bar button
 
