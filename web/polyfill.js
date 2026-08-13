@@ -1,3 +1,44 @@
+
+// Dynamically inject Gemini 3.7 Flash models into the React Popover model selector
+(function injectGemini37ToUI() {
+  function applyInjection() {
+    try {
+      var targetSpans = Array.from(document.querySelectorAll("span")).filter(function(s) {
+        return s.innerText && s.innerText.trim() === "Gemini 3.6 Flash (High)";
+      });
+
+      targetSpans.forEach(function(span) {
+        var row = span;
+        while (row && row.parentElement && row.tagName !== "BUTTON" && row.getAttribute("role") !== "option" && !row.className.includes("cursor-pointer")) {
+          row = row.parentElement;
+        }
+        var container = row ? row.parentElement : null;
+        if (container && !container.querySelector(".g37-injected")) {
+          var newModels = [
+            { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash (High)" },
+            { id: "gemini-3.7-flash-medium", name: "Gemini 3.7 Flash (Medium)" },
+            { id: "gemini-3.7-flash-low", name: "Gemini 3.7 Flash (Low)" }
+          ];
+
+          newModels.forEach(function(m) {
+            var clone = row.cloneNode(true);
+            clone.classList.add("g37-injected");
+            clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.6 Flash \(High\)/g, m.name);
+            clone.addEventListener("click", function(e) {
+              e.stopPropagation();
+              var modelBtnSpan = document.querySelector("button span.text-ellipsis");
+              if (modelBtnSpan) modelBtnSpan.innerText = m.name;
+              window.__activeModelOverride = m.id;
+            }, true);
+            container.insertBefore(clone, row);
+          });
+        }
+      });
+    } catch(e) {}
+  }
+  setInterval(applyInjection, 500);
+})();
+
 // Force inject Gemini 3.7 models if not present in dropdown
 (function injectGemini37Models() {
   const models = [
