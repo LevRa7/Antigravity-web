@@ -1,4 +1,3 @@
-
 // Global model override state and request interceptor
 window.__activeModelOverride = window.__activeModelOverride || null;
 
@@ -6,9 +5,9 @@ window.__activeModelOverride = window.__activeModelOverride || null;
   // 1. Intercept fetch
   var origFetch = window.fetch;
   window.fetch = function(resource, init) {
-    if (window.__activeModelOverride && init && init.body && typeof init.body === string) {
+    if (window.__activeModelOverride && init && init.body && typeof init.body === 'string') {
       try {
-        if (init.body.includes(gemini-3.6-flash)) {
+        if (init.body.indexOf('gemini-3.6-flash') !== -1) {
           init.body = init.body.replace(/gemini-3\.6-flash(-[a-z]+)?/g, window.__activeModelOverride);
         }
       } catch(e) {}
@@ -19,9 +18,9 @@ window.__activeModelOverride = window.__activeModelOverride || null;
   // 2. Intercept XMLHttpRequest
   var origSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function(body) {
-    if (window.__activeModelOverride && body && typeof body === string) {
+    if (window.__activeModelOverride && body && typeof body === 'string') {
       try {
-        if (body.includes(gemini-3.6-flash)) {
+        if (body.indexOf('gemini-3.6-flash') !== -1) {
           body = body.replace(/gemini-3\.6-flash(-[a-z]+)?/g, window.__activeModelOverride);
         }
       } catch(e) {}
@@ -37,11 +36,10 @@ window.__activeModelOverride = window.__activeModelOverride || null;
       var promptBarButtons = document.querySelectorAll("button.injected-model-row, button.g37-injected, button.openai-free-injected");
       promptBarButtons.forEach(function(b) { b.remove(); });
 
-      var dialogs = document.querySelectorAll("div[role=dialog]");
+      var dialogs = document.querySelectorAll("div[role='dialog']");
       dialogs.forEach(function(dialog) {
         if (!dialog.innerText || !dialog.innerText.includes("Model")) return;
 
-        // Ensure dialog is scrollable so all models are visible
         dialog.style.maxHeight = "80vh";
         dialog.style.overflowY = "auto";
 
@@ -87,6 +85,13 @@ window.__activeModelOverride = window.__activeModelOverride || null;
   }
   setInterval(applyInjection, 300);
 })();
+
+
+// Global model override state and request interceptor
+window.__activeModelOverride = window.__activeModelOverride || null;
+
+
+// Inject models into React Dialog Menu with full visibility and scrolling
 
 // Robust model injection into React Dialog Menu
 
