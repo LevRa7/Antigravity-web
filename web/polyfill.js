@@ -1,41 +1,30 @@
-// Robust single-pass model menu injection (strictly 1 unified list)
+// Robust single-pass model item injection (exact button cloning, 0 header duplicates)
 (function injectModelsToDialogMenu() {
   function applyInjection() {
     try {
-      // Remove any erroneous prompt bar or orphaned items
-      var orphanRows = document.querySelectorAll("button.injected-model-row");
-      orphanRows.forEach(function(b) { b.remove(); });
-
-      var dialogs = document.querySelectorAll("div[role=dialog]");
+      var dialogs = document.querySelectorAll("div[role='dialog']");
       dialogs.forEach(function(dialog) {
         if (!dialog.innerText || !dialog.innerText.includes("Model")) return;
-        // Strictly prevent multiple injections into the same dialog
         if (dialog.getAttribute("data-g37-injected") === "true") return;
 
-        // Make dialog scrollable nicely
         dialog.style.maxHeight = "80vh";
         dialog.style.overflowY = "auto";
 
-        // Find target row with Gemini 3.6 Flash (High) or Gemini 3.5 Flash (High)
-        var allElements = Array.from(dialog.querySelectorAll("div, span, button"));
-        var targetEl = allElements.find(function(el) {
-          return el.innerText && el.innerText.trim().startsWith("Gemini 3.6 Flash (High)");
+        // Find exact item button to use as template
+        var itemButtons = Array.from(dialog.querySelectorAll("button"));
+        var templateBtn = itemButtons.find(function(b) {
+          return b.innerText && (b.innerText.includes("Gemini") || b.innerText.includes("Claude") || b.innerText.includes("GPT"));
         });
-        if (!targetEl) return;
+        if (!templateBtn) return;
 
-        var row = targetEl;
-        while (row && row.parentElement && row.parentElement !== dialog && !row.className.includes("cursor-pointer") && row.tagName !== "BUTTON") {
-          row = row.parentElement;
-        }
-        var container = row ? row.parentElement : null;
+        var container = templateBtn.parentElement;
         if (!container) return;
 
-        // Mark dialog as processed immediately to prevent duplicate loops
         dialog.setAttribute("data-g37-injected", "true");
 
-        // Clean up any previously injected rows inside this container
-        var existing = container.querySelectorAll(".injected-model-row");
-        existing.forEach(function(el) { el.remove(); });
+        // Remove any old injected buttons
+        var oldInjected = container.querySelectorAll(".injected-model-row");
+        oldInjected.forEach(function(b) { b.remove(); });
 
         var extraModels = [
           { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash (High)" },
@@ -45,11 +34,23 @@
           { id: "big-pickle", name: "Big Pickle (OpenAI Free)" }
         ];
 
-        // Insert in reverse so insertBefore keeps natural order above Gemini 3.6 Flash (High)
         extraModels.slice().reverse().forEach(function(m) {
-          var clone = row.cloneNode(true);
+          var clone = templateBtn.cloneNode(true);
           clone.classList.add("injected-model-row");
-          clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.6 Flash \(High\)/g, m.name);
+          
+          // Replace text inside spans
+          var spans = clone.querySelectorAll("span");
+          var replaced = false;
+          spans.forEach(function(s) {
+            if (!replaced && s.children.length === 0 && s.innerText && (s.innerText.includes("Gemini") || s.innerText.includes("Claude") || s.innerText.includes("GPT"))) {
+              s.innerText = m.name;
+              replaced = true;
+            }
+          });
+          if (!replaced) {
+            clone.innerHTML = clone.innerHTML.replace(/Gemini [0-9\.]+ Flash \([^)]+\)/g, m.name);
+          }
+
           clone.addEventListener("click", function(e) {
             e.stopPropagation();
             var btnSpan = document.querySelector("button span.text-ellipsis");
@@ -58,13 +59,16 @@
             console.log("Selected model override:", m.id);
             dialog.style.display = "none";
           }, true);
-          container.insertBefore(clone, row);
+
+          container.insertBefore(clone, templateBtn);
         });
       });
     } catch(e) {}
   }
   setInterval(applyInjection, 300);
 })();
+
+// Robust single-pass model menu injection (strictly 1 unified list)
 
 // Global model override state and request interceptor
 window.__activeModelOverride = window.__activeModelOverride || null;
