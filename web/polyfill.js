@@ -2,46 +2,9 @@
 window.__activeModelOverride = window.__activeModelOverride || null;
 
 (function interceptModelRequests() {
-  // 1. Intercept fetch
+  // 1. Intercept fetch safely (non-async wrapper to preserve gRPC-Web streams)
   var origFetch = window.fetch;
-  window.fetch = async function(resource, init) {
-    var url = typeof resource === 'string' ? resource : (resource ? resource.url : '');
-    
-    // Route OpenAI / DeepSeek models through /api/openai-proxy if active
-    if (window.__activeModelOverride && (window.__activeModelOverride.includes('deepseek') || window.__activeModelOverride.includes('pickle'))) {
-      if (url.includes('SendUserCascadeMessage') || url.includes('StreamCascadeTurn')) {
-        console.log('[OpenAI Proxy Interceptor] Redirecting prompt to DeepSeek/OpenAI proxy:', window.__activeModelOverride);
-        try {
-          var userPrompt = "Hello";
-          if (init && init.body) {
-            var bodyText = typeof init.body === 'string' ? init.body : new TextDecoder().decode(init.body);
-            var match = bodyText.match(/["']?(text|content)["']?\s*:\s*["']([^"']+)["']/i);
-            if (match && match[2]) userPrompt = match[2];
-          }
-
-          var proxyResp = await origFetch('/api/openai-proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: window.__activeModelOverride,
-              messages: [{ role: 'user', content: userPrompt }]
-            })
-          });
-
-          var proxyData = await proxyResp.json();
-          var aiReply = (proxyData.choices && proxyData.choices[0] && proxyData.choices[0].message) ? proxyData.choices[0].message.content : "DeepSeek response placeholder";
-
-          // Return fake gRPC response
-          return new Response(new Uint8Array([0,0,0,0,0]), {
-            status: 200,
-            headers: { 'Content-Type': 'application/grpc-web+proto', 'grpc-status': '0' }
-          });
-        } catch(err) {
-          console.error('[OpenAI Proxy Interceptor Error]', err);
-        }
-      }
-    }
-
+  window.fetch = function(resource, init) {
     if (window.__activeModelOverride && init && init.body && typeof init.body === 'string') {
       try {
         if (init.body.indexOf('gemini-3.6-flash') !== -1) {
@@ -52,7 +15,7 @@ window.__activeModelOverride = window.__activeModelOverride || null;
     return origFetch.apply(this, arguments);
   };
 
-  // 2. Intercept XMLHttpRequest
+  // 2. Intercept XMLHttpRequest safely
   var origSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function(body) {
     if (window.__activeModelOverride && body && typeof body === 'string') {
@@ -66,7 +29,7 @@ window.__activeModelOverride = window.__activeModelOverride || null;
   };
 })();
 
-// Inject models into React Dialog Menu
+// Inject models into React Dialog Menu with exact button cloning
 (function injectModelsToDialogMenu() {
   function applyInjection() {
     try {
