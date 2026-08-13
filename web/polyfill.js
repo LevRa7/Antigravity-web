@@ -1,3 +1,31 @@
+// Force inject Gemini 3.7 models if not present in dropdown
+(function injectGemini37Models() {
+  const models = [
+    { value: 'gemini-3.7-flash-high', label: 'Gemini 3.7 Flash (High)' },
+    { value: 'gemini-3.7-flash-medium', label: 'Gemini 3.7 Flash (Medium)' },
+    { value: 'gemini-3.7-flash-low', label: 'Gemini 3.7 Flash (Low)' }
+  ];
+
+  function checkAndInject() {
+    var selectors = document.querySelectorAll("select, [role='listbox'], [data-radix-popper-content-wrapper]");
+    selectors.forEach(function(el) {
+      if (el.innerHTML.includes("Gemini") && !el.innerHTML.includes("Gemini 3.7 Flash (High)")) {
+        if (el.tagName === "SELECT") {
+          models.forEach(function(m) {
+            if (!el.querySelector('option[value="' + m.value + '"]')) {
+              var opt = document.createElement("option");
+              opt.value = m.value;
+              opt.innerText = m.label;
+              el.appendChild(opt);
+            }
+          });
+        }
+      }
+    });
+  }
+  setInterval(checkAndInject, 1500);
+})();
+
 
 // Auto-Redirect to /login on Authentication Error / Unauthenticated State
 (function checkAuthFailure() {
