@@ -1,4 +1,45 @@
 
+// Inject OpenAI Free models (big-pickle and deepseek-v4-flash-free from opencode.ai/zen/v1)
+(function injectOpenAIFreeModels() {
+  const openAIModels = [
+    { value: 'big-pickle', label: 'Big Pickle (OpenAI Free)' },
+    { value: 'deepseek-v4-flash-free', label: 'DeepSeek v4 Flash (OpenAI Free)' }
+  ];
+
+  function inject() {
+    try {
+      var targetSpans = Array.from(document.querySelectorAll("span")).filter(function(s) {
+        return s.innerText && (s.innerText.trim() === "Gemini 3.6 Flash (High)" || s.innerText.trim() === "Gemini 3.7 Flash (High)");
+      });
+
+      targetSpans.forEach(function(span) {
+        var row = span;
+        while (row && row.parentElement && row.tagName !== "BUTTON" && row.getAttribute("role") !== "option" && !row.className.includes("cursor-pointer")) {
+          row = row.parentElement;
+        }
+        var container = row ? row.parentElement : null;
+        if (container && !container.querySelector(".openai-free-injected")) {
+          openAIModels.forEach(function(m) {
+            var clone = row.cloneNode(true);
+            clone.classList.add("openai-free-injected");
+            clone.innerHTML = clone.innerHTML.replace(/Gemini 3\.[67] Flash \(High\)/g, m.label);
+            clone.addEventListener("click", function(e) {
+              e.stopPropagation();
+              var modelBtnSpan = document.querySelector("button span.text-ellipsis");
+              if (modelBtnSpan) modelBtnSpan.innerText = m.label;
+              window.__activeModelOverride = m.value;
+              console.log("Selected OpenAI Free Model:", m.value);
+            }, true);
+            container.insertBefore(clone, row);
+          });
+        }
+      });
+    } catch(e) {}
+  }
+  setInterval(inject, 500);
+})();
+
+
 // Dynamically inject Gemini 3.7 Flash models into the React Popover model selector
 (function injectGemini37ToUI() {
   function applyInjection() {
